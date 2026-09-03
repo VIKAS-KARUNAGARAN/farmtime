@@ -1,0 +1,10 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/login/page": "app/login/page.js",
+  "/(main)/dashboard/page": "app/(main)/dashboard/page.js",
+  "/(main)/staff/page": "app/(main)/staff/page.js",
+  "/(main)/roster/page": "app/(main)/roster/page.js",
+  "/(main)/clocking-station/page": "app/(main)/clocking-station/page.js",
+  "/(main)/payroll-reports/page": "app/(main)/payroll-reports/page.js",
+  "/(main)/audit-trail/page": "app/(main)/audit-trail/page.js"
+}
