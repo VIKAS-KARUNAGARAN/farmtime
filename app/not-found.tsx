@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/lib/nav";
 export default function NotFound() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-3 p-6 text-center">

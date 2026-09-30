@@ -1,6 +1,6 @@
 "use client";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import Link from "@/lib/nav";
+import { usePathname, useRouter } from "@/lib/nav";
 import { useState, type ReactNode } from "react";
 import {
   ArrowLeftRight,

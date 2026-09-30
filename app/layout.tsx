@@ -5,7 +5,7 @@ import { StoreProvider } from "@/lib/store";
 export const metadata: Metadata = {
   title: "FarmTime · Workforce management",
   description: "Separate staff and admin entrances for clocking, rosters, payroll and farm operations.",
-  icons: { icon: "/favicon.svg" },
+  icons: { icon: process.env.NEXT_PUBLIC_HASH_ROUTER === "1" ? "./favicon.svg" : "/favicon.svg" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

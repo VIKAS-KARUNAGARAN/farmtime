@@ -21,7 +21,8 @@ Landing page (/)
 ```bash
 npm install
 npm run dev        # http://localhost:3000
-npm run build      # static export to ./out
+npm run build      # static export to ./out (real URLs, e.g. /admin/roster)
+npm run build:preview  # single index.html with hash routes (#/admin/roster/) for static preview hosts
 ```
 
 ## Demo accounts

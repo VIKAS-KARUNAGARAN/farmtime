@@ -1,5 +1,5 @@
 "use client";
-import Link from "next/link";
+import Link from "@/lib/nav";
 import { useState } from "react";
 import { ArrowRight, Bell, CalendarDays, CloudSun, Coffee, LogIn, LogOut, MapPin, ShieldCheck, ThermometerSun } from "lucide-react";
 import { Badge, Button, CardHead, statusTone } from "@/components/ui";

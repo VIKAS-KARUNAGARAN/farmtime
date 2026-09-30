@@ -1,6 +1,6 @@
 "use client";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import Link from "@/lib/nav";
+import { useRouter } from "@/lib/nav";
 import { useState, type FormEvent } from "react";
 import { ArrowLeft, Eye, EyeOff, Fingerprint, Loader2, Lock, ShieldCheck, Clock } from "lucide-react";
 import { Logo, LogoMark } from "./Logo";

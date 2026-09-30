@@ -1,6 +1,6 @@
 "use client";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import Link from "@/lib/nav";
+import { useRouter } from "@/lib/nav";
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Fingerprint, Loader2 } from "lucide-react";
 import { Logo } from "@/components/Logo";

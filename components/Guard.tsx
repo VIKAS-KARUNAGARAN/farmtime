@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/lib/nav";
 import { Loader2 } from "lucide-react";
 import type { Role } from "@/lib/data";
 import { navState, useStore } from "@/lib/store";

@@ -1,5 +1,5 @@
 "use client";
-import Link from "next/link";
+import Link from "@/lib/nav";
 import { ArrowRight, Check, CloudRain, ThermometerSun, TriangleAlert, WifiOff, X } from "lucide-react";
 import { Avatar, Badge, Button, CardHead, PageHeader, Stat } from "@/components/ui";
 import { PAY_PERIOD, STATIONS } from "@/lib/data";

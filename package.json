@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:preview": "NEXT_PUBLIC_HASH_ROUTER=1 next build",
     "start": "npx serve out",
     "lint": "next lint"
   },
