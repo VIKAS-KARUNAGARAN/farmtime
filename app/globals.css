@@ -1,0 +1,98 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: 42 33% 96%;
+  --surface: 42 40% 99%;
+  --surface-2: 40 24% 92%;
+  --fg: 200 28% 12%;
+  --muted: 200 10% 38%;
+  --faint: 200 8% 56%;
+  --line: 40 16% 85%;
+  --staff: 150 42% 27%;
+  --staff-soft: 146 32% 91%;
+  --admin: 214 48% 24%;
+  --admin-soft: 214 40% 92%;
+  --wheat: 36 78% 44%;
+  --wheat-soft: 40 80% 90%;
+  --ok: 150 50% 32%;
+  --warn: 32 90% 40%;
+  --danger: 4 66% 46%;
+  --shadow: 200 30% 10%;
+  color-scheme: light;
+}
+
+.dark {
+  --bg: 205 20% 7%;
+  --surface: 205 18% 10%;
+  --surface-2: 205 14% 15%;
+  --fg: 42 22% 92%;
+  --muted: 205 8% 66%;
+  --faint: 205 6% 50%;
+  --line: 205 12% 20%;
+  --staff: 148 40% 55%;
+  --staff-soft: 150 26% 15%;
+  --admin: 212 70% 70%;
+  --admin-soft: 214 32% 17%;
+  --wheat: 38 80% 60%;
+  --wheat-soft: 36 40% 16%;
+  --ok: 148 45% 55%;
+  --warn: 36 90% 60%;
+  --danger: 4 75% 64%;
+  --shadow: 0 0% 0%;
+  color-scheme: dark;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    @apply bg-bg text-fg font-sans;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  h1, h2, h3 {
+    @apply font-display tracking-tight;
+    text-wrap: balance;
+  }
+  :focus-visible {
+    outline: 2px solid hsl(var(--wheat));
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl border border-line bg-surface shadow-card;
+  }
+  .label {
+    @apply text-xs font-medium uppercase tracking-[0.08em] text-faint;
+  }
+  .input {
+    @apply h-10 w-full rounded-lg border border-line bg-surface px-3 text-sm text-fg placeholder:text-faint transition-colors focus:border-fg/40 focus:outline-none focus:ring-2 focus:ring-wheat/30;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .fade-up {
+    animation: fadeUp 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: none; }
+  }
+  .pulse-dot {
+    animation: pulseDot 1.8s ease-in-out infinite;
+  }
+  @keyframes pulseDot {
+    0%, 100% { box-shadow: 0 0 0 0 hsl(var(--ok) / 0.45); }
+    50% { box-shadow: 0 0 0 6px hsl(var(--ok) / 0); }
+  }
+}
