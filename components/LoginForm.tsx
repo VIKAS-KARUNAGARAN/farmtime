@@ -6,7 +6,7 @@ import { ArrowLeft, Eye, EyeOff, Fingerprint, Loader2, Lock, ShieldCheck, Clock 
 import { Logo, LogoMark } from "./Logo";
 import { ThemeToggle } from "./ThemeToggle";
 import { Button, NoticeBanner } from "./ui";
-import { ACCOUNTS, type Portal } from "@/lib/data";
+import { FARM_NAME, type Portal } from "@/lib/data";
 import { useStore } from "@/lib/store";
 import { api } from "@/lib/api";
 
@@ -88,7 +88,7 @@ export function LoginForm({ portal }: { portal: Portal }) {
             ))}
           </ul>
         </div>
-        <p className="relative text-xs text-white/50">Riverbend Farm · FarmTime</p>
+        <p className="relative text-xs text-white/50">{FARM_NAME} · FarmTime</p>
       </aside>
 
       <div className="flex flex-col">
@@ -128,7 +128,7 @@ export function LoginForm({ portal }: { portal: Portal }) {
               </div>
 
               {error && <p role="alert" className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>}
-              {reset && <NoticeBanner tone="info" text="If that email belongs to an account, a reset link will be sent. In this demo no email is actually sent." onClose={() => setReset(false)} />}
+              {reset && <NoticeBanner tone="info" text="Your request has been logged. Your farm admin can set a new temporary password for you from Staff management." onClose={() => setReset(false)} />}
 
               <Button type="submit" variant={staff ? "staff" : "admin"} size="lg" className="w-full" disabled={busy || locked} data-testid="button-sign-in">
                 {busy ? <Loader2 size={16} className="animate-spin" /> : <Lock size={16} />}
@@ -146,24 +146,6 @@ export function LoginForm({ portal }: { portal: Portal }) {
               <Link href={c.other.href} className="font-medium text-fg underline-offset-2 hover:underline">Go to the {c.other.label}</Link>
             </p>
 
-            <div className="mt-8 rounded-xl border border-dashed border-line p-4">
-              <p className="text-xs font-medium text-fg">Demo accounts</p>
-              <p className="mt-0.5 text-xs text-muted">Try each one through either entrance to see the permission redirect.</p>
-              <div className="mt-3 space-y-1.5">
-                {ACCOUNTS.map((a) => (
-                  <button
-                    key={a.id}
-                    type="button"
-                    onClick={() => { setEmail(a.email); setPassword(a.password); setError(null); }}
-                    className="flex w-full items-center justify-between gap-3 rounded-lg px-2.5 py-1.5 text-left text-xs hover:bg-surface-2"
-                    data-testid={`button-demo-${a.id}`}
-                  >
-                    <span className="font-mono text-fg">{a.email}</span>
-                    <span className="text-muted">{a.roles.length > 1 ? "Staff + admin" : a.roles[0] === "admin" ? "Admin" : "Staff"}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
         </div>
       </div>

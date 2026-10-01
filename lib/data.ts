@@ -1,4 +1,7 @@
-// Shared types and the demo sign-in shortcuts. All live data comes from the Express API (see lib/api.ts).
+// Shared types. All live data comes from the Express API (see lib/api.ts).
+
+// Set NEXT_PUBLIC_FARM_NAME in .env.local to show your farm name in the portals.
+export const FARM_NAME = process.env.NEXT_PUBLIC_FARM_NAME || "Your farm";
 
 export type Role = "staff" | "admin";
 export type Portal = "staff" | "admin";
@@ -14,42 +17,6 @@ export type Account = {
   initials: string;
 };
 
-// Demo accounts, shown as shortcuts on the sign-in pages. Credentials are only
-// ever checked by the API server (bcrypt hashes in SQLite).
-export const ACCOUNTS: Account[] = [
-  {
-    id: "u-mia",
-    name: "Mia Chen",
-    email: "mia@farmtime.au",
-    password: "staff123",
-    roles: ["staff"],
-    title: "Orchard hand",
-    station: "Orchard block B",
-    initials: "MC",
-  },
-  {
-    id: "u-sam",
-    name: "Sam Patel",
-    email: "sam@farmtime.au",
-    password: "admin123",
-    roles: ["admin"],
-    title: "Operations manager",
-    station: "Head office",
-    initials: "SP",
-  },
-  {
-    id: "u-jo",
-    name: "Jo Walker",
-    email: "jo@farmtime.au",
-    password: "both123",
-    roles: ["staff", "admin"],
-    title: "Shift supervisor",
-    station: "Packing shed",
-    initials: "JW",
-  },
-];
-
-export const MFA_CODE = "246810";
 
 export type StaffMember = {
   id: string;
@@ -64,6 +31,10 @@ export type StaffMember = {
   hoursWeek: number;
   onSite: boolean;
   hasLogin: boolean;
+  email: string | null;
+  roles: Role[];
+  removed: boolean;
+  removedAt: string | null;
 };
 
 export type Timesheet = {

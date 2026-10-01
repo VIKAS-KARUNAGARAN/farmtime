@@ -21,23 +21,23 @@ export function processingPeriod(today = ymd()) {
   return { start, end: addDays(start, 13), payDate: addDays(current.start, 3), closes: addDays(current.start, 2) };
 }
 
-export function ensurePayrollRun(db, period = processingPeriod()) {
-  let run = db.prepare("SELECT * FROM payroll_runs WHERE period_start = ?").get(period.start);
+export async function ensurePayrollRun(db, period = processingPeriod()) {
+  let run = await db.prepare("SELECT * FROM payroll_runs WHERE period_start = ?").get(period.start);
   if (!run) {
-    db.prepare("INSERT INTO payroll_runs (id, period_start, period_end, pay_date, step) VALUES (?, ?, ?, ?, 0)").run(`pr_${period.start}`, period.start, period.end, period.payDate);
-    run = db.prepare("SELECT * FROM payroll_runs WHERE period_start = ?").get(period.start);
+    await db.prepare("INSERT INTO payroll_runs (id, period_start, period_end, pay_date, step) VALUES (?, ?, ?, ?, 0)").run(`pr_${period.start}`, period.start, period.end, period.payDate);
+    run = await db.prepare("SELECT * FROM payroll_runs WHERE period_start = ?").get(period.start);
   }
   return run;
 }
 
-export const entriesBetween = (db, from, toExclusive, extra = "", params = []) =>
-  db
+export const entriesBetween = async (db, from, toExclusive, extra = "", params = []) =>
+  await db
     .prepare(`SELECT * FROM time_entries WHERE clock_in >= ? AND clock_in < ? ${extra} ORDER BY clock_in`)
     .all(at(from, "00:00").toISOString(), at(toExclusive, "00:00").toISOString(), ...params);
 
-export function payrollRows(db, run) {
-  const employees = db.prepare("SELECT * FROM employees ORDER BY name").all();
-  const entries = entriesBetween(db, run.period_start, addDays(run.period_end, 1), "AND clock_out IS NOT NULL");
+export async function payrollRows(db, run) {
+  const employees = await db.prepare("SELECT * FROM employees ORDER BY name").all();
+  const entries = await entriesBetween(db, run.period_start, addDays(run.period_end, 1), "AND clock_out IS NOT NULL");
   return employees
     .map((e) => {
       const mine = entries.filter((t) => t.employee_id === e.id);
@@ -64,19 +64,19 @@ export function payrollRows(db, run) {
     .filter((r) => r.ordinary + r.overtime + r.excludedHours > 0);
 }
 
-export function weekHours(db, employeeId, ws = weekStart()) {
-  const rows = entriesBetween(db, ws, addDays(ws, 7), "AND employee_id = ?", [employeeId]);
+export async function weekHours(db, employeeId, ws = weekStart()) {
+  const rows = await entriesBetween(db, ws, addDays(ws, 7), "AND employee_id = ?", [employeeId]);
   return round1(rows.reduce((s, t) => s + entryHours(t), 0));
 }
 
-export function openEntry(db, employeeId) {
-  return db.prepare("SELECT * FROM time_entries WHERE employee_id = ? AND clock_out IS NULL ORDER BY clock_in DESC LIMIT 1").get(employeeId);
+export async function openEntry(db, employeeId) {
+  return await db.prepare("SELECT * FROM time_entries WHERE employee_id = ? AND clock_out IS NULL ORDER BY clock_in DESC LIMIT 1").get(employeeId);
 }
 
 /** Employees currently clocked in (open entry started within the last 16 hours). */
-export function onSite(db) {
+export async function onSite(db) {
   const since = new Date(Date.now() - 16 * 3600_000).toISOString();
-  return db
+  return await db
     .prepare(
       `SELECT t.id AS entry_id, t.clock_in, t.method, e.id, e.name, e.initials, e.position, s.id AS station_id, s.name AS station
          FROM time_entries t
@@ -88,9 +88,9 @@ export function onSite(db) {
     .all(since);
 }
 
-export function missedClockOuts(db) {
+export async function missedClockOuts(db) {
   const before = new Date(Date.now() - 16 * 3600_000).toISOString();
-  return db
+  return await db
     .prepare(
       `SELECT t.*, e.name FROM time_entries t JOIN employees e ON e.id = t.employee_id
         WHERE t.clock_out IS NULL AND t.clock_in < ? ORDER BY t.clock_in DESC`
@@ -99,9 +99,9 @@ export function missedClockOuts(db) {
 }
 
 /** Minutes late versus the rostered start (negative = early). null if not rostered. */
-export function lateness(db, entry) {
+export async function lateness(db, entry) {
   const d = ymd(new Date(entry.clock_in));
-  const shift = db.prepare("SELECT * FROM roster_shifts WHERE employee_id = ? AND date = ?").get(entry.employee_id, d);
+  const shift = await db.prepare("SELECT * FROM roster_shifts WHERE employee_id = ? AND date = ?").get(entry.employee_id, d);
   if (!shift) return null;
   return minutesBetween(at(d, shift.start_time), entry.clock_in);
 }

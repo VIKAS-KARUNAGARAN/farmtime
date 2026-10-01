@@ -1,4 +1,5 @@
 "use client";
+import { FARM_NAME } from "@/lib/data";
 import Link from "@/lib/nav";
 import { useState } from "react";
 import { ArrowRight, Check, CheckCheck, CloudRain, Loader2, MessageSquare, ThermometerSun, TriangleAlert, WifiOff, X } from "lucide-react";
@@ -70,7 +71,7 @@ export default function AdminDashboard() {
       <PageHeader
         eyebrow={new Date().toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long" })}
         title={`${greet}, ${session!.account.name.split(" ")[0]}`}
-        desc="Today’s operations at Riverbend Farm."
+        desc={`Today’s operations at ${FARM_NAME}.`}
         actions={<Link href="/admin/roster/"><Button variant="admin" size="sm">Open roster <ArrowRight size={14} /></Button></Link>}
       />
 

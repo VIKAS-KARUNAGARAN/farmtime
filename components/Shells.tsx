@@ -1,4 +1,5 @@
 "use client";
+import { FARM_NAME } from "@/lib/data";
 import Link from "@/lib/nav";
 import { usePathname, useRouter } from "@/lib/nav";
 import { useState, type ReactNode } from "react";
@@ -157,7 +158,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
             <span className="lg:hidden">
               <Logo />
             </span>
-            <span className="hidden text-sm text-muted lg:inline">Admin workspace · Riverbend Farm</span>
+            <span className="hidden text-sm text-muted lg:inline">Admin workspace · {FARM_NAME}</span>
           </div>
           <ThemeToggle />
         </header>

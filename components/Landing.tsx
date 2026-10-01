@@ -1,3 +1,4 @@
+import { FARM_NAME } from "@/lib/data";
 import Link from "@/lib/nav";
 import { ArrowRight, Clock, CalendarCheck, FileText, Bell, Users, CalendarDays, Wallet, MonitorSmartphone, ShieldCheck, KeyRound, DoorOpen, Fingerprint, LayoutGrid } from "lucide-react";
 import { Logo } from "@/components/Logo";
@@ -38,7 +39,7 @@ export function Landing() {
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-5 sm:px-8">
         <Logo />
         <div className="flex items-center gap-3">
-          <span className="hidden text-sm text-muted sm:inline">Riverbend Farm · Workforce</span>
+          <span className="hidden text-sm text-muted sm:inline">{FARM_NAME} · Workforce</span>
           <ThemeToggle />
         </div>
       </header>
@@ -106,7 +107,6 @@ export function Landing() {
       <footer className="border-t border-line">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-5 py-5 text-xs text-faint sm:px-8">
           <span>© 2026 FarmTime</span>
-          <span>Prototype · demo data only</span>
         </div>
       </footer>
     </div>

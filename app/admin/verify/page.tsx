@@ -6,7 +6,7 @@ import { ArrowLeft, Fingerprint, Loader2 } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button, NoticeBanner } from "@/components/ui";
-import { MFA_CODE } from "@/lib/data";
+import { api } from "@/lib/api";
 import { useStore } from "@/lib/store";
 
 export default function Verify() {
@@ -16,13 +16,22 @@ export default function Verify() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const refs = useRef<(HTMLInputElement | null)[]>([]);
+  const [setup, setSetup] = useState<{ secret: string; qr: string } | null>(null);
+  const [setupError, setSetupError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!ready) return;
     if (!session) router.replace("/admin/login/");
     else if (!session.account.roles.includes("admin")) router.replace("/staff/");
     else if (session.mfaVerified) router.replace("/admin/");
-    else refs.current[0]?.focus();
+    else {
+      refs.current[0]?.focus();
+      if (!session.mfaEnrolled) {
+        api<{ secret: string; qr: string }>("/api/auth/mfa/setup", { method: "POST" })
+          .then(setSetup)
+          .catch((e) => setSetupError(e.message));
+      }
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready]);
 
@@ -73,10 +82,30 @@ export default function Verify() {
           <span className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-admin-soft text-admin">
             <Fingerprint size={22} />
           </span>
-          <h1 className="mt-5 text-[1.75rem] font-bold leading-tight">Verify it’s you</h1>
-          <p className="mt-2 text-sm text-muted">
-            Enter the 6-digit code from your authenticator app for <span className="font-medium text-fg">{session.account.email}</span>.
-          </p>
+          <h1 className="mt-5 text-[1.75rem] font-bold leading-tight">{session.mfaEnrolled ? "Verify it’s you" : "Set up your authenticator"}</h1>
+          {session.mfaEnrolled ? (
+            <p className="mt-2 text-sm text-muted">
+              Enter the 6-digit code from your authenticator app for <span className="font-medium text-fg">{session.account.email}</span>.
+            </p>
+          ) : (
+            <div className="mt-2 text-sm text-muted" data-testid="mfa-setup">
+              <p>Admin access needs a second step. Scan this code with Google Authenticator, Microsoft Authenticator or 1Password, then enter the 6-digit code it shows.</p>
+              {setupError && <p role="alert" className="mt-3 rounded-lg bg-danger/10 px-3 py-2 text-danger">{setupError}</p>}
+              {setup ? (
+                <div className="mt-4 flex items-center gap-4 rounded-xl border border-line bg-surface p-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={setup.qr} alt="Authenticator QR code" width={132} height={132} className="rounded-md bg-white p-1" />
+                  <div className="min-w-0 text-xs">
+                    <p className="font-medium text-fg">Can’t scan?</p>
+                    <p className="mt-1">Enter this key manually:</p>
+                    <p className="mt-1 break-all font-mono text-[0.8rem] text-fg" data-testid="text-mfa-secret">{setup.secret.replace(/(.{4})/g, "$1 ").trim()}</p>
+                  </div>
+                </div>
+              ) : (
+                !setupError && <p className="mt-4 flex items-center gap-2"><Loader2 size={14} className="animate-spin" /> Preparing your code…</p>
+              )}
+            </div>
+          )}
           <div className="mt-6 flex gap-2" onPaste={(e) => { e.preventDefault(); setAt(0, e.clipboardData.getData("text")); }}>
             {digits.map((d, i) => (
               <input
@@ -97,9 +126,6 @@ export default function Verify() {
           <Button type="submit" variant="admin" size="lg" className="mt-5 w-full" disabled={busy} data-testid="button-verify">
             {busy && <Loader2 size={16} className="animate-spin" />} {busy ? "Verifying…" : "Verify and continue"}
           </Button>
-          <p className="mt-4 rounded-lg bg-surface-2 px-3 py-2 text-center text-xs text-muted">
-            Demo code: <button type="button" className="font-mono font-medium text-fg underline-offset-2 hover:underline" onClick={() => setAt(0, MFA_CODE)}>{MFA_CODE}</button>
-          </p>
           <Link href="/" onClick={() => signOut()} className="mt-6 inline-flex items-center gap-1.5 text-sm text-muted hover:text-fg">
             <ArrowLeft size={16} /> Cancel and sign out
           </Link>

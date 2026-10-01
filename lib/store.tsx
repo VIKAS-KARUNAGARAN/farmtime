@@ -30,12 +30,13 @@ export type Session = {
   account: User;
   portal: Portal;
   mfaVerified: boolean;
+  mfaEnrolled: boolean;
   workspace: Role | null;
 };
 
 export type Notice = { tone: "info" | "warn"; text: string } | null;
 
-type ServerSession = { user: User; portal: Portal; mfaVerified: boolean; workspace: Role | null };
+type ServerSession = { user: User; portal: Portal; mfaVerified: boolean; mfaEnrolled: boolean; workspace: Role | null };
 type AuthResponse = { token?: string | null; next: string; notice?: Notice; session: ServerSession };
 
 type SignInResult = { ok: false; error: string; locked?: boolean } | { ok: true; next: string };
@@ -62,7 +63,7 @@ export function hasRole(s: Session | null, r: Role) {
   return !!s && s.account.roles.includes(r);
 }
 
-const toSession = (s: ServerSession): Session => ({ account: s.user, portal: s.portal, mfaVerified: s.mfaVerified, workspace: s.workspace });
+const toSession = (s: ServerSession): Session => ({ account: s.user, portal: s.portal, mfaVerified: s.mfaVerified, mfaEnrolled: s.mfaEnrolled, workspace: s.workspace });
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);

@@ -48,9 +48,26 @@ export default function ProfilePage() {
     }
   }
 
-  async function resetPassword() {
-    await api("/api/auth/forgot-password", { body: { email: a.email } }).catch(() => {});
-    show("Password reset email requested");
+  const [pwOpen, setPwOpen] = useState(false);
+  const [cur, setCur] = useState("");
+  const [nextPw, setNextPw] = useState("");
+  const [pwErr, setPwErr] = useState<string | null>(null);
+  async function changePassword(e: React.FormEvent) {
+    e.preventDefault();
+    if (nextPw.length < 10) return setPwErr("Use at least 10 characters.");
+    setBusy(true);
+    setPwErr(null);
+    try {
+      await api("/api/auth/password", { body: { current: cur, next: nextPw } });
+      setPwOpen(false);
+      setCur("");
+      setNextPw("");
+      show("Password changed · other devices signed out");
+    } catch (e) {
+      setPwErr((e as ApiError).message);
+    } finally {
+      setBusy(false);
+    }
   }
 
   const rows = [
@@ -102,7 +119,7 @@ export default function ProfilePage() {
               </div>
               <div className="flex items-center justify-between gap-3 border-t border-line pt-3">
                 <div><p className="font-medium">Password</p><p className="text-xs text-muted">{a.passwordChangedDaysAgo !== null ? `Last changed ${a.passwordChangedDaysAgo} days ago` : "Never changed"}</p></div>
-                <Button variant="outline" size="sm" onClick={resetPassword}>Reset</Button>
+                <Button variant="outline" size="sm" onClick={() => { setPwErr(null); setPwOpen(true); }} data-testid="button-change-password">Change</Button>
               </div>
             </div>
           </section>
@@ -119,6 +136,16 @@ export default function ProfilePage() {
             <Button variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
             <Button variant="staff" onClick={save} disabled={busy}>{busy && <Loader2 size={15} className="animate-spin" />} Save</Button>
           </div>
+        </Modal>
+      )}
+      {pwOpen && (
+        <Modal title="Change password" onClose={() => setPwOpen(false)}>
+          <form onSubmit={changePassword} className="space-y-4" noValidate>
+            <div><label className="mb-1.5 block text-sm font-medium" htmlFor="cp">Current password</label><input id="cp" type="password" autoComplete="current-password" className="input" value={cur} onChange={(e) => setCur(e.target.value)} autoFocus data-testid="input-current-password" /></div>
+            <div><label className="mb-1.5 block text-sm font-medium" htmlFor="np">New password</label><input id="np" type="password" autoComplete="new-password" className="input" value={nextPw} onChange={(e) => setNextPw(e.target.value)} data-testid="input-new-password" /><p className="mt-1 text-xs text-muted">At least 10 characters. A short phrase is easiest to remember.</p></div>
+            {pwErr && <p role="alert" className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">{pwErr}</p>}
+            <div className="flex justify-end gap-2"><Button type="button" variant="ghost" onClick={() => setPwOpen(false)}>Cancel</Button><Button type="submit" variant="staff" disabled={busy} data-testid="button-save-password">Change password</Button></div>
+          </form>
         </Modal>
       )}
       <Toast text={toast} />

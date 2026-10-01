@@ -33,19 +33,19 @@ function setCookie(res, token, maxAgeSec) {
   res.append("Set-Cookie", parts.join("; "));
 }
 
-export function loadUser(db, userId) {
-  const u = db
+export async function loadUser(db, userId) {
+  const u = await db
     .prepare(
       `SELECT u.id, u.name, u.email, u.title, u.initials, u.employee_id, u.totp_secret, u.password_changed_at,
               s.name AS station
          FROM users u
     LEFT JOIN employees e ON e.id = u.employee_id
     LEFT JOIN stations s ON s.id = e.station_id
-        WHERE u.id = ?`
+        WHERE u.id = ? AND u.disabled = 0`
     )
     .get(userId);
   if (!u) return null;
-  u.roles = db.prepare("SELECT role FROM user_roles WHERE user_id = ? ORDER BY role DESC").all(userId).map((r) => r.role);
+  u.roles = (await db.prepare("SELECT role FROM user_roles WHERE user_id = ? ORDER BY role DESC").all(userId)).map((r) => r.role);
   u.station = u.station || "Head office";
   return u;
 }
@@ -64,38 +64,39 @@ export function publicSession(user, session) {
     },
     portal: session.portal,
     mfaVerified: !!session.mfa_verified,
+    mfaEnrolled: !!user.totp_secret,
     workspace: session.workspace,
     expiresAt: session.expires_at,
   };
 }
 
 /** Creates a session and returns the raw token (only its hash is stored) plus the session row. */
-export function createSession(db, req, res, { userId, portal, workspace, mfaVerified = false }) {
-  const s = getSettings(db);
+export async function createSession(db, req, res, { userId, portal, workspace, mfaVerified = false }) {
+  const s = await getSettings(db);
   const token = crypto.randomBytes(32).toString("base64url");
   const now = new Date();
   const expires = new Date(now.getTime() + s.staff_session_hours * 3600_000);
-  db.prepare(
+  await db.prepare(
     `INSERT INTO sessions (token_hash, user_id, portal, mfa_verified, workspace, created_at, last_seen, expires_at, ip, user_agent)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(sha256(token), userId, portal, mfaVerified ? 1 : 0, workspace, now.toISOString(), now.toISOString(), expires.toISOString(), clientIp(req), String(req.headers["user-agent"] || "").slice(0, 200));
   setCookie(res, token, s.staff_session_hours * 3600);
-  const session = db.prepare("SELECT * FROM sessions WHERE token_hash = ?").get(sha256(token));
+  const session = await db.prepare("SELECT * FROM sessions WHERE token_hash = ?").get(sha256(token));
   return { token, session };
 }
 
 /** Issues a new token for the same session (used after MFA to prevent session fixation). */
-export function rotateSession(db, req, res) {
-  const s = getSettings(db);
+export async function rotateSession(db, req, res) {
+  const s = await getSettings(db);
   const token = crypto.randomBytes(32).toString("base64url");
-  db.prepare("UPDATE sessions SET token_hash = ? WHERE token_hash = ?").run(sha256(token), req.sessionHash);
+  await db.prepare("UPDATE sessions SET token_hash = ? WHERE token_hash = ?").run(sha256(token), req.sessionHash);
   req.sessionHash = sha256(token);
   setCookie(res, token, s.staff_session_hours * 3600);
   return token;
 }
 
-export function destroySession(db, req, res) {
-  if (req.sessionHash) db.prepare("DELETE FROM sessions WHERE token_hash = ?").run(req.sessionHash);
+export async function destroySession(db, req, res) {
+  if (req.sessionHash) await db.prepare("DELETE FROM sessions WHERE token_hash = ?").run(req.sessionHash);
   setCookie(res, null, 0);
 }
 
@@ -109,28 +110,28 @@ function tokenFrom(req) {
 
 /** Attaches req.user and req.session when a valid session token is present. */
 export function authenticate(db) {
-  return (req, _res, next) => {
+  return async (req, _res, next) => {
     const token = tokenFrom(req);
     if (!token) return next();
     const hash = sha256(token);
-    const session = db.prepare("SELECT * FROM sessions WHERE token_hash = ?").get(hash);
+    const session = await db.prepare("SELECT * FROM sessions WHERE token_hash = ?").get(hash);
     if (!session) return next();
 
     const now = Date.now();
-    const settings = getSettings(db);
+    const settings = await getSettings(db);
     const expired = new Date(session.expires_at).getTime() < now;
     const idleAdmin =
       session.workspace === "admin" && session.mfa_verified && now - new Date(session.last_seen).getTime() > settings.admin_idle_minutes * 60_000;
     if (expired || idleAdmin) {
-      db.prepare("DELETE FROM sessions WHERE token_hash = ?").run(hash);
+      await db.prepare("DELETE FROM sessions WHERE token_hash = ?").run(hash);
       req.sessionExpired = true;
       return next();
     }
-    const user = loadUser(db, session.user_id);
+    const user = await loadUser(db, session.user_id);
     if (!user) return next();
     // Throttle last_seen writes to once a minute.
     if (now - new Date(session.last_seen).getTime() > 60_000) {
-      db.prepare("UPDATE sessions SET last_seen = ? WHERE token_hash = ?").run(nowIso(), hash);
+      await db.prepare("UPDATE sessions SET last_seen = ? WHERE token_hash = ?").run(nowIso(), hash);
     }
     req.user = user;
     req.session = session;
@@ -145,10 +146,10 @@ export function requireAuth(req, _res, next) {
 }
 
 export function requireRole(db, role) {
-  return (req, _res, next) => {
+  return async (req, _res, next) => {
     if (!req.user) return requireAuth(req, _res, next);
     if (!req.user.roles.includes(role)) {
-      audit(db, {
+      await audit(db, {
         actor: req.user,
         action: `Blocked ${role} request`,
         target: `${req.method} ${req.originalUrl.split("?")[0]}`,
@@ -166,7 +167,7 @@ export function requireRole(db, role) {
 }
 
 export function requirePermission(permission) {
-  return (req, _res, next) => {
+  return async (req, _res, next) => {
     if (!can(req.user?.roles ?? [], permission)) return next(forbidden());
     next();
   };

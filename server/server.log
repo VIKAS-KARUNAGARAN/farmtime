@@ -1,14 +1,21 @@
-Seeded FarmTime demo data.
-  MFA for sam@farmtime.au: otpauth://totp/FarmTime:sam%40farmtime.au?secret=FFWG4QQDR6MCTKLPDVW2VSNVLUKCH25E&issuer=FarmTime  (demo code 246810 also accepted)
-  MFA for jo@farmtime.au: otpauth://totp/FarmTime:jo%40farmtime.au?secret=SXNQFOUX3WT37JGLL33QNYH2UZK77VII&issuer=FarmTime  (demo code 246810 also accepted)
-FarmTime API listening on http://localhost:4000  (TZ Australia/Adelaide, demo mode on)
-[0mGET /api/auth/session [33m401[0m 3.834 ms - 52[0m
-[0mGET /api/auth/session [33m401[0m 1.086 ms - 52[0m
-[0mGET /api/auth/session [33m401[0m 0.794 ms - 52[0m
-[0mGET /api/auth/session [33m401[0m 0.738 ms - 52[0m
-[0mGET /api/auth/session [33m401[0m 0.936 ms - 52[0m
-[0mPOST /api/auth/login [32m200[0m 109.329 ms - 373[0m
-[0mPOST /api/auth/mfa [32m200[0m 3.146 ms - 351[0m
-[0mGET /api/admin/dashboard [32m200[0m 4.063 ms - 1979[0m
-[0mGET /api/admin/approvals [32m200[0m 4.194 ms - 2496[0m
-[0mGET /api/admin/payroll [32m200[0m 2.801 ms - 1602[0m
+FarmTime API listening on http://localhost:4000  (TZ Australia/Adelaide)
+[0mGET /api/auth/session [33m401[0m 6.541 ms - 52[0m
+[0mPOST /api/auth/login [32m200[0m 320.600 ms - 399[0m
+[0mPOST /api/auth/mfa/setup [32m200[0m 49.062 ms - 4533[0m
+[0mPOST /api/auth/mfa [32m200[0m 8.390 ms - 377[0m
+[0mGET /api/admin/dashboard [32m200[0m 39.474 ms - 873[0m
+[0mGET /api/admin/approvals [32m200[0m 35.216 ms - 38[0m
+[0mGET /api/admin/stations [32m200[0m 6.168 ms - 27[0m
+[0mPOST /api/admin/stations [32m201[0m 6.015 ms - 24[0m
+[0mGET /api/admin/stations [32m200[0m 3.208 ms - 183[0m
+[0mGET /api/admin/employees? [32m200[0m 4.153 ms - 76[0m
+[0mPOST /api/admin/employees [32m201[0m 310.604 ms - 25[0m
+[0mGET /api/admin/employees? [32m200[0m 6.017 ms - 381[0m
+[0mPOST /api/admin/employees [32m201[0m 311.942 ms - 25[0m
+[0mGET /api/admin/employees? [32m200[0m 5.340 ms - 688[0m
+[0mDELETE /api/admin/employees/emp_126d6a404607 [32m200[0m 14.009 ms - 28[0m
+[0mGET /api/admin/employees? [32m200[0m 12.809 ms - 381[0m
+[0mGET /api/auth/session [33m401[0m 1.051 ms - 52[0m
+[0mPOST /api/auth/login [32m200[0m 311.720 ms - 400[0m
+[0mGET /api/me/home [32m200[0m 9.277 ms - 559[0m
+[0mGET /api/me/home [33m401[0m 8.622 ms - 52[0m

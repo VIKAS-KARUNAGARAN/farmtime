@@ -16,24 +16,39 @@ Landing page (/)
                    → /admin
 ```
 
-## Run it
+## Run it (two terminals)
 
 ```bash
+# 1. API + database (see server/README.md for Supabase setup)
+cd server
+cp .env.example .env          # paste your Supabase DATABASE_URL
 npm install
-npm run dev        # http://localhost:3000
-npm run build      # static export to ./out (real URLs, e.g. /admin/roster)
-npm run build:preview  # single index.html with hash routes (#/admin/roster/) for static preview hosts
+npm run migrate
+npm run create-admin -- --name "Your Name" --email you@yourfarm.com.au
+npm run dev                   # http://localhost:4000
+
+# 2. Website
+cd ..
+npm install
+npm run dev                   # http://localhost:3000
 ```
 
-## Demo accounts
+Optional `.env.local` for the website:
 
-| Email | Password | Roles |
-|---|---|---|
-| mia@farmtime.au | staff123 | Staff |
-| sam@farmtime.au | admin123 | Admin |
-| jo@farmtime.au  | both123  | Staff + Admin |
+```
+NEXT_PUBLIC_API_URL=http://localhost:4000
+NEXT_PUBLIC_FARM_NAME=Riverbend Farm
+```
 
-Admin MFA code: `246810`
+`npm run build` makes a static export in `./out` that you can host anywhere (Vercel, Netlify, S3). Point `NEXT_PUBLIC_API_URL` at your deployed API.
+
+## First-time setup
+
+1. Sign in at the **Admin portal** with the account you created, then scan the QR code with an authenticator app.
+2. **Station monitor → Add station** for each clock-in point.
+3. **Staff management → Add staff** for each person (email + temporary password, optional admin access).
+4. Staff sign in at the **Staff portal**, clock in at their station, and change their password under Profile.
+5. Remove people with the bin icon in Staff management. Their login stops working at once, and their pay records are kept.
 
 ## Routes
 
@@ -60,18 +75,15 @@ components/                shells (sidebar / top nav), guard, UI primitives
 lib/store.tsx              session state (talks to /api/auth)
 lib/api.ts                 API client (Bearer token in memory, cookie fallback)
 lib/useApi.ts              data-fetching hook
-lib/data.ts                shared types + demo sign-in shortcuts
+lib/data.ts                shared types
 server/                    Express.js API (see server/README.md)
 ```
 
-## Before production
+## Going live
 
-Access rules now live in the Express API (`server/`), so the client guards are for UX only. Remaining steps for a live deployment:
-
-1. Set `DEMO_MODE=false` and `COOKIE_SECURE=true`, and put both apps behind HTTPS on the same site.
-2. Set `CORS_ORIGINS` and `NEXT_PUBLIC_API_URL` to the real origins.
-3. Move from SQLite to PostgreSQL if you run more than one API instance.
-4. Connect real email for password resets and notifications, and a device-authenticated endpoint for station kiosks.
+1. Deploy the API (Render, Railway, Fly.io or a VPS) with `DATABASE_URL`, `CORS_ORIGINS=https://your-site`, `NODE_ENV=production`.
+2. Build the site with `NEXT_PUBLIC_API_URL=https://your-api` and host `out/`.
+3. Serve both over HTTPS. Keep the database connection string only on the API server.
 
 ## Backend (Express.js API)
 
