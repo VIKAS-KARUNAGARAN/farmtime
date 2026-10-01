@@ -8,6 +8,7 @@ import { ThemeToggle } from "./ThemeToggle";
 import { Button, NoticeBanner } from "./ui";
 import { ACCOUNTS, type Portal } from "@/lib/data";
 import { useStore } from "@/lib/store";
+import { api } from "@/lib/api";
 
 const copy = {
   staff: {
@@ -47,9 +48,7 @@ export function LoginForm({ portal }: { portal: Portal }) {
       return;
     }
     setBusy(true);
-    // Simulated network round-trip to the auth server.
-    setTimeout(() => {
-      const r = signIn(portal, email, password);
+    signIn(portal, email, password).then((r) => {
       if (!r.ok) {
         setBusy(false);
         setError(r.error);
@@ -57,7 +56,12 @@ export function LoginForm({ portal }: { portal: Portal }) {
         return;
       }
       router.push(r.next);
-    }, 550);
+    });
+  }
+
+  function forgot() {
+    setReset(true);
+    if (email) api("/api/auth/forgot-password", { body: { email } }).catch(() => {});
   }
 
   return (
@@ -111,7 +115,7 @@ export function LoginForm({ portal }: { portal: Portal }) {
               <div>
                 <div className="mb-1.5 flex items-center justify-between">
                   <label htmlFor="password" className="text-sm font-medium">Password</label>
-                  <button type="button" onClick={() => setReset(true)} className="text-[13px] text-muted underline-offset-2 hover:text-fg hover:underline">
+                  <button type="button" onClick={forgot} className="text-[13px] text-muted underline-offset-2 hover:text-fg hover:underline">
                     Forgot password?
                   </button>
                 </div>
@@ -124,7 +128,7 @@ export function LoginForm({ portal }: { portal: Portal }) {
               </div>
 
               {error && <p role="alert" className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>}
-              {reset && <NoticeBanner tone="info" text="If that email belongs to an account, a reset link will be sent. In this demo no email is sent." onClose={() => setReset(false)} />}
+              {reset && <NoticeBanner tone="info" text="If that email belongs to an account, a reset link will be sent. In this demo no email is actually sent." onClose={() => setReset(false)} />}
 
               <Button type="submit" variant={staff ? "staff" : "admin"} size="lg" className="w-full" disabled={busy || locked} data-testid="button-sign-in">
                 {busy ? <Loader2 size={16} className="animate-spin" /> : <Lock size={16} />}

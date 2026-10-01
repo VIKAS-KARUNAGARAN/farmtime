@@ -113,3 +113,59 @@ export function Toast({ text }: { text: string | null }) {
     </div>
   );
 }
+
+/** Skeleton blocks shown while an API request is in flight. */
+export function PageLoading({ rows = 3 }: { rows?: number }) {
+  return (
+    <div aria-busy="true" aria-label="Loading" className="space-y-4">
+      <div className="h-7 w-48 animate-pulse rounded-md bg-surface-2" />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="h-[92px] animate-pulse rounded-xl bg-surface-2" />
+        ))}
+      </div>
+      {Array.from({ length: rows }).map((_, i) => (
+        <div key={i} className="h-24 animate-pulse rounded-xl bg-surface-2" />
+      ))}
+    </div>
+  );
+}
+
+export function ErrorState({ error, onRetry }: { error: { message: string }; onRetry?: () => void }) {
+  return (
+    <div role="alert" className="card flex flex-col items-start gap-3 p-6">
+      <span className="inline-flex items-center gap-2 text-sm font-semibold text-danger">
+        <TriangleAlert size={16} /> Couldn’t load this page
+      </span>
+      <p className="text-sm text-muted">{error.message}</p>
+      {onRetry && (
+        <Button variant="outline" size="sm" onClick={onRetry}>
+          Try again
+        </Button>
+      )}
+    </div>
+  );
+}
+
+export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4" onClick={onClose} role="presentation">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        className="fade-up w-full max-w-md rounded-t-2xl border border-line bg-surface p-5 shadow-lift sm:rounded-2xl"
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.key === "Escape" && onClose()}
+      >
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="font-sans text-base font-semibold tracking-normal">{title}</h2>
+          <button onClick={onClose} aria-label="Close" className="rounded-md p-1 text-muted hover:bg-surface-2 hover:text-fg">
+            <X size={16} />
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}

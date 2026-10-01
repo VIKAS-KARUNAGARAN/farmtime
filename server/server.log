@@ -1,0 +1,4 @@
+Seeded FarmTime demo data.
+  MFA for sam@farmtime.au: otpauth://totp/FarmTime:sam%40farmtime.au?secret=FFWG4QQDR6MCTKLPDVW2VSNVLUKCH25E&issuer=FarmTime  (demo code 246810 also accepted)
+  MFA for jo@farmtime.au: otpauth://totp/FarmTime:jo%40farmtime.au?secret=SXNQFOUX3WT37JGLL33QNYH2UZK77VII&issuer=FarmTime  (demo code 246810 also accepted)
+FarmTime API listening on http://localhost:4000  (TZ Australia/Adelaide, demo mode on)

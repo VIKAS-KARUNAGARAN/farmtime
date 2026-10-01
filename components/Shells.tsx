@@ -57,7 +57,7 @@ function useSwitch() {
   const { session, openWorkspace } = useStore();
   const router = useRouter();
   const multi = (session?.account.roles.length ?? 0) > 1;
-  return { multi, go: (r: "staff" | "admin") => router.push(openWorkspace(r)) };
+  return { multi, go: async (r: "staff" | "admin") => router.push(await openWorkspace(r)) };
 }
 
 export function AdminShell({ children }: { children: ReactNode }) {

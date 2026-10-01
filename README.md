@@ -1,6 +1,6 @@
 # FarmTime – two-entrance workforce site (Next.js)
 
-A Next.js 15 (App Router) prototype of the FarmTime flow:
+A Next.js 15 (App Router) frontend with an Express.js API for the FarmTime flow:
 
 ```
 Landing page (/)
@@ -57,17 +57,32 @@ app/
   staff/(app)/…            staff pages, guarded by <Guard role="staff">
   admin/(app)/…            admin pages, guarded by <Guard role="admin">
 components/                shells (sidebar / top nav), guard, UI primitives
-lib/store.tsx              session, access rules, audit log, demo state
-lib/data.ts                demo data
+lib/store.tsx              session state (talks to /api/auth)
+lib/api.ts                 API client (Bearer token in memory, cookie fallback)
+lib/useApi.ts              data-fetching hook
+lib/data.ts                shared types + demo sign-in shortcuts
+server/                    Express.js API (see server/README.md)
 ```
 
 ## Before production
 
-This prototype stores state in memory so it can run as a static site. For a real deployment:
+Access rules now live in the Express API (`server/`), so the client guards are for UX only. Remaining steps for a live deployment:
 
-1. Remove `output: "export"` from `next.config.mjs`.
-2. Move `signIn` / `verifyMfa` to route handlers (e.g. `app/api/auth/…`) with hashed passwords and a real TOTP check.
-3. Issue an httpOnly, secure session cookie containing the user id and roles.
-4. Add `middleware.ts` that reads the session and blocks `/admin/*` unless the user has the admin role **and** a verified MFA flag; block `/staff/*` unless the user has the staff role.
-5. Re-check permissions inside every API route. Client-side guards are for UX only.
-6. Write audit events on the server.
+1. Set `DEMO_MODE=false` and `COOKIE_SECURE=true`, and put both apps behind HTTPS on the same site.
+2. Set `CORS_ORIGINS` and `NEXT_PUBLIC_API_URL` to the real origins.
+3. Move from SQLite to PostgreSQL if you run more than one API instance.
+4. Connect real email for password resets and notifications, and a device-authenticated endpoint for station kiosks.
+
+## Backend (Express.js API)
+
+The app now runs against a real API in `server/`. See `server/README.md` for setup, endpoints and the security model.
+
+```bash
+# terminal 1
+cd server && npm install && npm run dev     # http://localhost:4000
+# terminal 2
+npm install && npm run dev                  # http://localhost:3000
+```
+
+Sign-in, MFA, clocking, timesheets, leave, rosters, approvals, payroll, reports, audit and settings all read and write the API.
+The browser never sees passwords or makes access decisions; it only shows the screen the server says you're allowed.

@@ -1,95 +1,73 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import {
-  ACCOUNTS,
-  AUDIT,
-  LEAVE,
-  MFA_CODE,
-  STAFF,
-  type Account,
-  type AuditEvent,
-  type LeaveRequest,
-  type Portal,
-  type Role,
-  type StaffMember,
-} from "./data";
+import { api, ApiError, setToken, setUnauthorizedHandler } from "./api";
+import type { Portal, Role } from "./data";
 
 /*
- * FarmTime client store.
+ * FarmTime client store: session + UI state only.
  *
- * This prototype keeps everything in memory so it runs as a static site.
- * The access rules are written the same way a real server would apply them:
+ * All access decisions are made by the Express API:
  *   1. The user picks an entrance (Staff portal or Admin portal).
- *   2. Credentials are verified.
- *   3. The account's roles, not the entrance chosen, decide where they land.
- *   4. Admin access always requires a second factor (MFA).
- * Move signIn/verifyMfa to API routes + middleware for production.
+ *   2. POST /api/auth/login verifies credentials (bcrypt, lockout per entrance).
+ *   3. The account's roles, not the entrance, decide where they land (`next`).
+ *   4. Admin APIs refuse any session that hasn't passed MFA.
+ * The client only mirrors those decisions to pick which screen to show.
  */
 
+export type User = {
+  id: string;
+  name: string;
+  email: string;
+  title: string;
+  initials: string;
+  roles: Role[];
+  station: string;
+  employeeId: string | null;
+};
+
 export type Session = {
-  account: Account;
-  portal: Portal; // entrance used
+  account: User;
+  portal: Portal;
   mfaVerified: boolean;
-  workspace: Role | null; // workspace currently open
+  workspace: Role | null;
 };
 
 export type Notice = { tone: "info" | "warn"; text: string } | null;
 
+type ServerSession = { user: User; portal: Portal; mfaVerified: boolean; workspace: Role | null };
+type AuthResponse = { token?: string | null; next: string; notice?: Notice; session: ServerSession };
+
 type SignInResult = { ok: false; error: string; locked?: boolean } | { ok: true; next: string };
 
-type ClockState = { since: number | null; station: string; lastOut?: number };
-
 type Store = {
+  ready: boolean;
   session: Session | null;
   notice: Notice;
   setNotice: (n: Notice) => void;
-  signIn: (portal: Portal, email: string, password: string) => SignInResult;
-  verifyMfa: (code: string) => { ok: boolean; next?: string; error?: string };
-  openWorkspace: (role: Role) => string;
-  signOut: () => void;
-  attempts: Record<Portal, number>;
-  audit: AuditEvent[];
-  log: (e: Omit<AuditEvent, "id" | "time">) => void;
-  clock: Record<string, ClockState>;
-  clockIn: (station: string) => void;
-  clockOut: () => void;
-  leave: LeaveRequest[];
-  submitLeave: (r: Omit<LeaveRequest, "id" | "status" | "staffName">) => void;
-  decideLeave: (id: string, status: "Approved" | "Declined") => void;
-  staff: StaffMember[];
-  addStaff: (s: Omit<StaffMember, "id" | "initials" | "onSite" | "hoursWeek">) => void;
+  signIn: (portal: Portal, email: string, password: string) => Promise<SignInResult>;
+  verifyMfa: (code: string) => Promise<{ ok: boolean; next?: string; error?: string }>;
+  openWorkspace: (role: Role) => Promise<string>;
+  signOut: () => Promise<void>;
   theme: "light" | "dark";
   toggleTheme: () => void;
 };
 
 const Ctx = createContext<Store | null>(null);
 
-const MAX_ATTEMPTS = 5;
-
 // Set while signing out so route guards don't bounce the user to a login page.
 export const navState = { signingOut: false };
-
-function stamp() {
-  const d = new Date();
-  return `Today ${d.toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: false })}`;
-}
 
 export function hasRole(s: Session | null, r: Role) {
   return !!s && s.account.roles.includes(r);
 }
 
+const toSession = (s: ServerSession): Session => ({ account: s.user, portal: s.portal, mfaVerified: s.mfaVerified, workspace: s.workspace });
+
 export function StoreProvider({ children }: { children: ReactNode }) {
+  const [ready, setReady] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
-  const [attempts, setAttempts] = useState<Record<Portal, number>>({ staff: 0, admin: 0 });
-  const [audit, setAudit] = useState<AuditEvent[]>(AUDIT);
-  const [clock, setClock] = useState<Record<string, ClockState>>({
-    "u-mia": { since: null, station: "Orchard block B" },
-    "u-jo": { since: Date.now() - (2 * 60 + 40) * 60_000, station: "Packing shed" },
-  });
-  const [leave, setLeave] = useState<LeaveRequest[]>(LEAVE);
-  const [staff, setStaff] = useState<StaffMember[]>(STAFF);
   const [theme, setTheme] = useState<"light" | "dark">("light");
 
   useEffect(() => {
@@ -99,144 +77,96 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     document.documentElement.classList.toggle("dark", theme === "dark");
   }, [theme]);
 
-  const log = useCallback((e: Omit<AuditEvent, "id" | "time">) => {
-    setAudit((prev) => [{ ...e, id: `e${Date.now()}${Math.random().toString(36).slice(2, 6)}`, time: stamp() }, ...prev]);
+  // Restore an existing session (cookie) on first load.
+  useEffect(() => {
+    api<{ session: ServerSession }>("/api/auth/session", { silent401: true })
+      .then((r) => setSession(toSession(r.session)))
+      .catch(() => setSession(null))
+      .finally(() => setReady(true));
+  }, []);
+
+  // If the server says the session is gone (expired, idle timeout, revoked), drop it.
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      if (navState.signingOut) return;
+      setToken(null);
+      setSession((s) => {
+        if (s) setNotice({ tone: "warn", text: "Your session ended. Sign in again to continue." });
+        return null;
+      });
+    });
+    return () => setUnauthorizedHandler(null);
+  }, []);
+
+  const apply = useCallback((r: AuthResponse) => {
+    if (r.token) setToken(r.token);
+    setSession(toSession(r.session));
   }, []);
 
   const signIn = useCallback(
-    (portal: Portal, email: string, password: string): SignInResult => {
-      if (attempts[portal] >= MAX_ATTEMPTS) {
-        return { ok: false, locked: true, error: "Too many attempts. This entrance is locked for 15 minutes. Contact your administrator." };
+    async (portal: Portal, email: string, password: string): Promise<SignInResult> => {
+      try {
+        const r = await api<AuthResponse>("/api/auth/login", { body: { portal, email: email.trim(), password }, silent401: true });
+        navState.signingOut = false;
+        apply(r);
+        setNotice(r.notice ?? null);
+        return { ok: true, next: r.next };
+      } catch (e) {
+        const err = e as ApiError;
+        return { ok: false, error: err.message, locked: err.code === "LOCKED" };
       }
-      const account = ACCOUNTS.find((a) => a.email.toLowerCase() === email.trim().toLowerCase() && a.password === password);
-      const source = portal === "admin" ? "Admin portal" : "Staff portal";
-
-      if (!account) {
-        const n = attempts[portal] + 1;
-        setAttempts((p) => ({ ...p, [portal]: n }));
-        log({ actor: "Unknown", action: "Failed sign-in", target: email || "(blank)", source, level: portal === "admin" ? "security" : "warn" });
-        // Generic message: never reveal whether the email or the password was wrong.
-        return {
-          ok: false,
-          locked: n >= MAX_ATTEMPTS,
-          error:
-            n >= MAX_ATTEMPTS
-              ? "Too many attempts. This entrance is locked for 15 minutes. Contact your administrator."
-              : `Email or password is incorrect. ${MAX_ATTEMPTS - n} attempt${MAX_ATTEMPTS - n === 1 ? "" : "s"} left.`,
-        };
-      }
-
-      navState.signingOut = false;
-      setAttempts((p) => ({ ...p, [portal]: 0 }));
-      const isStaff = account.roles.includes("staff");
-      const isAdmin = account.roles.includes("admin");
-      log({ actor: account.name, action: "Signed in", target: `Roles: ${account.roles.join(", ")}`, source, level: "info" });
-
-      // Multi-role accounts choose a workspace after authenticating.
-      if (isStaff && isAdmin) {
-        setSession({ account, portal, mfaVerified: false, workspace: null });
-        return { ok: true, next: "/workspace/" };
-      }
-
-      if (isStaff) {
-        setSession({ account, portal, mfaVerified: false, workspace: "staff" });
-        if (portal === "admin") {
-          log({ actor: account.name, action: "Redirected to staff workspace", target: "No admin permission", source, level: "warn" });
-          setNotice({ tone: "info", text: "You signed in through the Admin portal, but your account has staff access. We’ve opened your staff home." });
-        }
-        return { ok: true, next: "/staff/" };
-      }
-
-      // Admin only: second factor always required.
-      setSession({ account, portal, mfaVerified: false, workspace: "admin" });
-      if (portal === "staff") {
-        setNotice({ tone: "info", text: "This account has admin access. Verify your identity to open the Admin workspace." });
-      }
-      return { ok: true, next: "/admin/verify/" };
     },
-    [attempts, log]
+    [apply]
   );
 
   const verifyMfa = useCallback(
-    (code: string) => {
-      if (!session || !session.account.roles.includes("admin")) return { ok: false, error: "No admin session to verify." };
-      if (code.replace(/\s/g, "") !== MFA_CODE) {
-        log({ actor: session.account.name, action: "Failed MFA check", target: "Authenticator code", source: "Admin portal", level: "security" });
-        return { ok: false, error: "That code didn’t match. Check your authenticator app and try again." };
+    async (code: string) => {
+      try {
+        const r = await api<AuthResponse>("/api/auth/mfa", { body: { code: code.replace(/\s/g, "") }, silent401: true });
+        apply(r);
+        return { ok: true, next: r.next };
+      } catch (e) {
+        const err = e as ApiError;
+        if (err.code === "MFA_LOCKED" || err.code === "NO_SESSION") {
+          setToken(null);
+          setSession(null);
+          setNotice({ tone: "warn", text: err.message });
+          return { ok: false, next: "/admin/login/", error: err.message };
+        }
+        return { ok: false, error: err.message };
       }
-      setSession({ ...session, mfaVerified: true, workspace: "admin" });
-      log({ actor: session.account.name, action: "Passed MFA check", target: "Admin workspace", source: "Admin portal", level: "security" });
-      return { ok: true, next: "/admin/" };
     },
-    [session, log]
+    [apply]
   );
 
   const openWorkspace = useCallback(
-    (role: Role) => {
-      if (!session || !session.account.roles.includes(role)) return "/";
-      if (role === "admin" && !session.mfaVerified) {
-        setSession({ ...session, workspace: "admin" });
-        return "/admin/verify/";
+    async (role: Role) => {
+      try {
+        const r = await api<AuthResponse>("/api/auth/workspace", { body: { role } });
+        apply(r);
+        return r.next;
+      } catch {
+        return "/";
       }
-      setSession({ ...session, workspace: role });
-      return role === "admin" ? "/admin/" : "/staff/";
     },
-    [session]
+    [apply]
   );
 
-  const signOut = useCallback(() => {
-    if (session) log({ actor: session.account.name, action: "Signed out", target: "Session ended", source: session.workspace === "admin" ? "Admin portal" : "Staff portal", level: "info" });
+  const signOut = useCallback(async () => {
     navState.signingOut = true;
     setSession(null);
     setNotice(null);
-  }, [session, log]);
-
-  const clockIn = useCallback(
-    (station: string) => {
-      if (!session) return;
-      const id = session.account.id;
-      setClock((p) => ({ ...p, [id]: { since: Date.now(), station } }));
-      log({ actor: session.account.name, action: "Clocked in", target: station, source: "Staff portal · verified session", level: "info" });
-    },
-    [session, log]
-  );
-
-  const clockOut = useCallback(() => {
-    if (!session) return;
-    const id = session.account.id;
-    setClock((p) => ({ ...p, [id]: { since: null, station: p[id]?.station ?? "", lastOut: Date.now() } }));
-    log({ actor: session.account.name, action: "Clocked out", target: clock[id]?.station ?? "", source: "Staff portal · verified session", level: "info" });
-  }, [session, log, clock]);
-
-  const submitLeave = useCallback(
-    (r: Omit<LeaveRequest, "id" | "status" | "staffName">) => {
-      if (!session) return;
-      setLeave((p) => [{ ...r, id: `l${Date.now()}`, staffName: session.account.name, status: "Pending" }, ...p]);
-      log({ actor: session.account.name, action: "Requested leave", target: `${r.type} · ${r.from}–${r.to}`, source: "Staff portal", level: "info" });
-    },
-    [session, log]
-  );
-
-  const decideLeave = useCallback(
-    (id: string, status: "Approved" | "Declined") => {
-      const req = leave.find((l) => l.id === id);
-      setLeave((p) => p.map((l) => (l.id === id ? { ...l, status } : l)));
-      if (req && session) log({ actor: session.account.name, action: `${status} leave`, target: `${req.staffName} · ${req.from}–${req.to}`, source: "Admin portal", level: "info" });
-    },
-    [leave, session, log]
-  );
-
-  const addStaff = useCallback(
-    (s: Omit<StaffMember, "id" | "initials" | "onSite" | "hoursWeek">) => {
-      const initials = s.name.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase();
-      setStaff((p) => [...p, { ...s, id: `s${Date.now()}`, initials, onSite: false, hoursWeek: 0 }]);
-      if (session) log({ actor: session.account.name, action: "Added staff member", target: `${s.name} · ${s.role}`, source: "Admin portal", level: "security" });
-    },
-    [session, log]
-  );
+    try {
+      await api("/api/auth/logout", { body: {}, silent401: true });
+    } catch {
+      /* already signed out */
+    }
+    setToken(null);
+  }, []);
 
   const value = useMemo<Store>(
     () => ({
+      ready,
       session,
       notice,
       setNotice,
@@ -244,21 +174,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       verifyMfa,
       openWorkspace,
       signOut,
-      attempts,
-      audit,
-      log,
-      clock,
-      clockIn,
-      clockOut,
-      leave,
-      submitLeave,
-      decideLeave,
-      staff,
-      addStaff,
       theme,
       toggleTheme: () => setTheme((t) => (t === "dark" ? "light" : "dark")),
     }),
-    [session, notice, signIn, verifyMfa, openWorkspace, signOut, attempts, audit, log, clock, clockIn, clockOut, leave, submitLeave, decideLeave, staff, addStaff, theme]
+    [ready, session, notice, signIn, verifyMfa, openWorkspace, signOut, theme]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

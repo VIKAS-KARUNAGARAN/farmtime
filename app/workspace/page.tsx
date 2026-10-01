@@ -8,14 +8,15 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { useStore } from "@/lib/store";
 
 export default function Workspace() {
-  const { session, openWorkspace, signOut } = useStore();
+  const { ready, session, openWorkspace, signOut } = useStore();
   const router = useRouter();
 
   useEffect(() => {
+    if (!ready) return;
     if (!session) router.replace("/");
     else if (session.account.roles.length < 2) router.replace(session.account.roles[0] === "admin" ? "/admin/" : "/staff/");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [ready]);
   if (!session) return null;
 
   const opts = [
@@ -38,7 +39,7 @@ export default function Workspace() {
             {opts.map((o) => (
               <button
                 key={o.role}
-                onClick={() => router.push(openWorkspace(o.role))}
+                onClick={async () => router.push(await openWorkspace(o.role))}
                 className={`group card flex w-full items-center gap-4 p-5 text-left transition-[border-color,box-shadow] hover:shadow-lift ${o.ring}`}
                 data-testid={`button-workspace-${o.role}`}
               >

@@ -6,15 +6,15 @@ import type { Role } from "@/lib/data";
 import { navState, useStore } from "@/lib/store";
 
 /**
- * Client-side route guard for the prototype.
- * In production, repeat these checks in middleware.ts and in every API route:
- * the browser can be tampered with, the server cannot.
+ * Client-side route guard. It only decides which screen to show; the Express API
+ * enforces the same rules on every request (requireRole + MFA check), and logs
+ * blocked attempts to the audit trail.
  */
 export function Guard({ role, children }: { role: Role; children: ReactNode }) {
-  const { session, setNotice, log } = useStore();
+  const { ready, session, setNotice } = useStore();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  useEffect(() => setMounted(ready), [ready]);
 
   const roles = session?.account.roles ?? [];
   const allowed = !!session && roles.includes(role) && (role === "staff" || session.mfaVerified);
@@ -31,7 +31,6 @@ export function Guard({ role, children }: { role: Role; children: ReactNode }) {
       return;
     }
     if (role === "admin") {
-      log({ actor: session.account.name, action: "Blocked admin page request", target: "Insufficient permission", source: "Route guard", level: "security" });
       setNotice({ tone: "warn", text: "The Admin workspace is restricted. Your account has staff access only." });
       router.replace("/staff/");
       return;

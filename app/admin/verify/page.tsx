@@ -10,7 +10,7 @@ import { MFA_CODE } from "@/lib/data";
 import { useStore } from "@/lib/store";
 
 export default function Verify() {
-  const { session, verifyMfa, notice, setNotice, signOut } = useStore();
+  const { ready, session, verifyMfa, notice, setNotice, signOut } = useStore();
   const router = useRouter();
   const [digits, setDigits] = useState<string[]>(Array(6).fill(""));
   const [error, setError] = useState<string | null>(null);
@@ -18,12 +18,13 @@ export default function Verify() {
   const refs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
+    if (!ready) return;
     if (!session) router.replace("/admin/login/");
     else if (!session.account.roles.includes("admin")) router.replace("/staff/");
     else if (session.mfaVerified) router.replace("/admin/");
     else refs.current[0]?.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [ready]);
 
   function setAt(i: number, v: string) {
     const clean = v.replace(/\D/g, "");
@@ -44,10 +45,10 @@ export default function Verify() {
     const code = digits.join("");
     if (code.length < 6) return setError("Enter all 6 digits.");
     setBusy(true);
-    setTimeout(() => {
-      const r = verifyMfa(code);
+    verifyMfa(code).then((r) => {
       if (!r.ok) {
         setBusy(false);
+        if (r.next) return router.replace(r.next);
         setError(r.error ?? "Try again.");
         setDigits(Array(6).fill(""));
         refs.current[0]?.focus();
@@ -55,7 +56,7 @@ export default function Verify() {
       }
       setNotice(null);
       router.push(r.next!);
-    }, 450);
+    });
   }
 
   if (!session) return null;
