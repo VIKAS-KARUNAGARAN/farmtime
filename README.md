@@ -21,7 +21,7 @@ Landing page (/)
 ```bash
 # 1. API + database (see server/README.md for Supabase setup)
 cd server
-cp .env.example .env          # paste your Supabase DATABASE_URL
+cp .env.exammple .env          # paste your Supabase DATABASE_URL
 npm install
 npm run migrate
 npm run create-admin -- --name "Your Name" --email you@yourfarm.com.au
