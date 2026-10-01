@@ -2,3 +2,13 @@ Seeded FarmTime demo data.
   MFA for sam@farmtime.au: otpauth://totp/FarmTime:sam%40farmtime.au?secret=FFWG4QQDR6MCTKLPDVW2VSNVLUKCH25E&issuer=FarmTime  (demo code 246810 also accepted)
   MFA for jo@farmtime.au: otpauth://totp/FarmTime:jo%40farmtime.au?secret=SXNQFOUX3WT37JGLL33QNYH2UZK77VII&issuer=FarmTime  (demo code 246810 also accepted)
 FarmTime API listening on http://localhost:4000  (TZ Australia/Adelaide, demo mode on)
+[0mGET /api/auth/session [33m401[0m 3.834 ms - 52[0m
+[0mGET /api/auth/session [33m401[0m 1.086 ms - 52[0m
+[0mGET /api/auth/session [33m401[0m 0.794 ms - 52[0m
+[0mGET /api/auth/session [33m401[0m 0.738 ms - 52[0m
+[0mGET /api/auth/session [33m401[0m 0.936 ms - 52[0m
+[0mPOST /api/auth/login [32m200[0m 109.329 ms - 373[0m
+[0mPOST /api/auth/mfa [32m200[0m 3.146 ms - 351[0m
+[0mGET /api/admin/dashboard [32m200[0m 4.063 ms - 1979[0m
+[0mGET /api/admin/approvals [32m200[0m 4.194 ms - 2496[0m
+[0mGET /api/admin/payroll [32m200[0m 2.801 ms - 1602[0m

@@ -10,7 +10,11 @@
  */
 
 const PREVIEW_BASE = "__PORT_4000__";
-export const API_BASE = PREVIEW_BASE.startsWith("__") ? process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000" : PREVIEW_BASE;
+const IS_PREVIEW = !PREVIEW_BASE.startsWith("__");
+export const API_BASE = IS_PREVIEW ? PREVIEW_BASE : process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+// The preview proxy answers CORS with "*", which browsers reject for credentialed requests.
+// Cookies don't work there anyway, so the preview relies on the Bearer token only.
+const CREDENTIALS: RequestCredentials = IS_PREVIEW ? "omit" : "include";
 
 let token: string | null = null;
 let onUnauthorized: (() => void) | null = null;
@@ -49,7 +53,7 @@ export async function api<T = unknown>(path: string, opts: Opts = {}): Promise<T
       method: opts.method ?? (opts.body !== undefined ? "POST" : "GET"),
       headers,
       body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
-      credentials: "include",
+      credentials: CREDENTIALS,
       signal: opts.signal,
     });
   } catch (e) {
